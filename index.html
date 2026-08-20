@@ -35,28 +35,29 @@
         <div id="status-box" class="status">Esperando acción...</div>
     </div>
 
-    <!-- Librería oficial de Webex (Alojada en Cisco S3 sin problemas de MIME Type) -->
+    <!-- Librería oficial de Webex (Alojada en el CDN de Cisco) -->
     <script src="https://code.s3.amazonaws.com/webex-widget-builds/webex-sdk.min.js"></script>
 
     <script>
         // =========================================================
-        // CONFIGURACIÓN
+        // CONFIGURACIÓN DE TU INTEGRATION DE WEBEX
         // =========================================================
-        const CLIENT_ID = 'Ca184ab2598ff70c8b60130eb358c608cef020a783b0f39c2c4c6e88291458f59'; // Conserva comillas
+        const CLIENT_ID = 'Ca184ab2598ff70c8b60130eb358c608cef020a783b0f39c2c4c6e88291458f59';
         const SCOPES = 'spark:calls_write spark:telephony_config_write spark:kms spark:webrtc_calling guest-issuer:read spark-admin:calls_write spark:telephony_config_read guest-issuer:write spark-admin:telephony_config_read spark-admin:telephony_config_write';
         
-        // Garantiza que la URI enviada coincida con la registrada
+        // Obtiene la URL exacta de tu página sin parámetros
         const REDIRECT_URI = window.location.protocol + '//' + window.location.host + window.location.pathname;
 
+        // FUNCIÓN DE LOGIN
         function iniciarLogin() {
-            if (CLIENT_ID === 'Ca184ab2598ff70c8b60130eb358c608cef020a783b0f39c2c4c6e88291458f59' || !CLIENT_ID) {
-                alert('Atención: Debes reemplazar CLIENT_ID con el tu valor real.');
+            if (!CLIENT_ID) {
+                alert('Atención: La variable CLIENT_ID está vacía.');
                 return;
             }
 
             document.getElementById('status-box').innerText = "Redirigiendo al portal de Webex...";
 
-            // Generar flujo Implicit Grant de OAuth 2.0
+            // Generar URL para flujo Implicit Grant (OAuth 2.0)
             const authUrl = "https://webexapis.com/v1/authorize?" +
                 "client_id=" + encodeURIComponent(CLIENT_ID) +
                 "&response_type=token" +
@@ -66,10 +67,11 @@
             window.location.href = authUrl;
         }
 
+        // CAPTURA DEL TOKEN TRAS AUTENTICARSE
         window.addEventListener('load', function() {
             const statusBox = document.getElementById('status-box');
 
-            // Capturar access_token tras la autorización de Webex (#access_token=...)
+            // Capturar access_token de la URL (#access_token=...)
             const hash = window.location.hash.substring(1);
             const params = new URLSearchParams(hash);
             const accessToken = params.get('access_token');
