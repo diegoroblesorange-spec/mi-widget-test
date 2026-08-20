@@ -47,7 +47,7 @@
         // CONFIGURACIÓN DE TU APLICACIÓN
         // =========================================================
         const CLIENT_ID = 'Ca184ab2598ff70c8b60130eb358c608cef020a783b0f39c2c4c6e88291458f59'; // Reemplaza conservando las comillas
-        const SCOPES = 'spark:telephony_calls_write spark:people_read';
+        const SCOPES = 'spark:calls_write spark:telephony_config_write spark:kms spark:webrtc_calling guest-issuer:read spark-admin:calls_write spark:telephony_config_read guest-issuer:write spark-admin:telephony_config_read spark-admin:telephony_config_write';
         const REDIRECT_URI = window.location.origin + window.location.pathname;
 
         const statusBox = document.getElementById('status-box');
