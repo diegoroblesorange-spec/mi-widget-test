@@ -2,12 +2,91 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Prueba de Widget</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webex SDK Widget</title>
+    <!-- Carga del SDK oficial de Webex vía CDN -->
+    <script src="https://unpkg.com/webex@^1/dist/webex.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        .card { border: 1px solid #ccc; padding: 20px; border-radius: 8px; max-width: 400px; }
+        button { background-color: #007a87; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #005a63; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <h1>Mi Página de Prueba</h1>
 
-    <!-- PEGA AQUÍ EL CÓDIGO DE TU WIDGET -->
+    <div class="card">
+        <h2>Webex SDK Widget Test</h2>
+        <div id="auth-section">
+            <button id="login-btn">Iniciar Sesión con Webex</button>
+        </div>
+        
+        <div id="widget-section" style="display:none;">
+            <p>Conectado como: <span id="user-email"></span></p>
+            <input type="text" id="dial-number" placeholder="+56912345678" style="padding: 8px; width: 70%;">
+            <button id="call-btn">Llamar</button>
+        </div>
 
+        <div id="status">Esperando autenticación...</div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN DE TU INTEGRACIÓN
+        const CLIENT_ID = 'Cd8cd5028de66c5f573a186421d2a240a28564f88a88ca10945b138953c081ac4'; // Pega tu Client ID aquí
+        const REDIRECT_URI = window.location.href.split('#')[0]; // URL actual de GitHub Pages
+
+        // Inicializar instancia del SDK de Webex
+        const webex = window.Webex.init({
+            config: {
+                credentials: {
+                    client_id: CLIENT_ID,
+                    redirect_uri: REDIRECT_URI,
+                    scope: 'spark:all'
+                }
+            }
+        });
+
+        const statusDiv = document.getElementById('status');
+
+        // 1. Manejar Inicio de Sesión
+        document.getElementById('login-btn').addEventListener('click', () => {
+            webex.authorization.initiateLogin();
+        });
+
+        // 2. Verificar si el usuario ya está autenticado
+        webex.once('ready', () => {
+            if (webex.canAuthorize) {
+                statusDiv.innerText = "Autenticado con éxito en Webex.";
+                document.getElementById('auth-section').style.display = 'none';
+                document.getElementById('widget-section').style.display = 'block';
+
+                // Obtener datos del usuario
+                webex.people.get('me').then((person) => {
+                    document.getElementById('user-email').innerText = person.emails[0];
+                });
+            } else {
+                statusDiv.innerText = "Por favor, inicia sesión para activar el widget.";
+            }
+        });
+
+        // 3. Ejemplo de acción con el SDK (Llamada/Dial)
+        document.getElementById('call-btn').addEventListener('click', () => {
+            const destination = document.getElementById('dial-number').value;
+            if(!destination) return alert('Ingresa un número');
+
+            statusDiv.innerText = "Iniciando llamada a " + destination + "...";
+            
+            // Usar el objeto de telefonía/reuniones del SDK
+            webex.meetings.create(destination)
+                .then((meeting) => {
+                    meeting.join();
+                    statusDiv.innerText = "Llamada conectada en el widget.";
+                })
+                .catch((err) => {
+                    statusDiv.innerText = "Error al marcar: " + err.message;
+                });
+        });
+    </script>
 </body>
 </html>
