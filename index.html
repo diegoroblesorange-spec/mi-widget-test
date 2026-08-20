@@ -3,123 +3,157 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webex Calling Widget</title>
+    <title>Webex Click-to-Call (JWE)</title>
+    
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; }
-        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 450px; }
-        button { background-color: #007a87; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 15px; }
-        button:hover { background-color: #005a63; }
-        input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 65%; margin-right: 5px; }
-        .status { margin-top: 15px; padding: 10px; border-radius: 5px; background: #e9ecef; font-size: 14px; word-break: break-all; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; text-align: center; margin: auto; }
+        .btn-call { background-color: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 25px; font-weight: bold; font-size: 16px; cursor: pointer; transition: background 0.3s; }
+        .btn-call:hover { background-color: #218838; }
+        .btn-call:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .btn-hangup { background-color: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 25px; font-weight: bold; font-size: 16px; cursor: pointer; display: none; margin: auto; }
+        .btn-hangup:hover { background-color: #c82333; }
+        .status { margin-top: 20px; padding: 10px; border-radius: 5px; background: #e9ecef; font-size: 14px; word-break: break-all; }
+        audio { display: none; }
     </style>
+
+    <!-- SDK UMD Universal de Webex -->
+    <script src="https://cdn.jsdelivr.net/npm/webex@2.60.2/dist/webex.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
 
     <div class="card">
-        <h2>Webex Calling Widget</h2>
-        
-        <div id="auth-section">
-            <p>Conéctate con tu cuenta de Webex Calling para activar el teléfono web.</p>
-            <button id="login-btn" type="button" onclick="iniciarLogin()">Iniciar Sesión con Webex</button>
-        </div>
+        <h2>Atención al Cliente</h2>
+        <p>Presiona el botón para comunicarse con soporte.</p>
 
-        <div id="calling-section" style="display: none;">
-            <p><strong>Usuario:</strong> <span id="user-email">Cargando...</span></p>
-            <hr>
-            <div style="margin-top: 15px;">
-                <input type="text" id="dial-number" placeholder="Ej: +56912345678 o 1001">
-                <button id="call-btn" type="button">Llamar</button>
-            </div>
-        </div>
+        <!-- Canales de Audio para la llamada WebRTC -->
+        <audio id="remote-audio" autoplay></audio>
+        <audio id="local-audio" autoplay muted></audio>
 
-        <div id="status-box" class="status">Esperando acción...</div>
+        <button id="call-btn" class="btn-call" type="button" disabled>Inicializando...</button>
+        <button id="hangup-btn" class="btn-hangup" type="button">Colgar Llamada</button>
+
+        <div id="status-box" class="status">Conectando servicio...</div>
     </div>
-
-    <!-- Bundle UMD de Webex para Navegadores sin require() -->
-    <script src="https://cdn.jsdelivr.net/npm/webex@2.60.2/dist/webex.min.js" crossorigin="anonymous"></script>
 
     <script>
         // =========================================================
-        // CONFIGURACIÓN DE TU INTEGRATION DE WEBEX
+        // CONFIGURACIÓN DE PARÁMETROS
         // =========================================================
-        const CLIENT_ID = 'Ca184ab2598ff70c8b60130eb358c608cef020a783b0f39c2c4c6e88291458f59';
-        const SCOPES = 'spark:calls_write spark:telephony_config_write spark:kms spark:webrtc_calling guest-issuer:read spark-admin:calls_write spark:telephony_config_read guest-issuer:write spark-admin:telephony_config_read spark-admin:telephony_config_write';
-        
-        // Obtiene la URL exacta de tu página sin parámetros
-        const REDIRECT_URI = window.location.protocol + '//' + window.location.host + window.location.pathname;
+        const JWE_TOKEN = 'eyJwMnMiOiI3dU5qNFZTS1Y2blN6WEdIT0NjLTRTeGRBUGhwS01naHlyZ01SWHNwRklUVHZjMUY2VVBqdkU1LXZ3V3J3ZFVOIiwicDJjIjo3ODg4LCJraWQiOiJrbXM6Ly9rbXMtdXMud2J4Mi5jb20va2V5cy80MDYxOTQ1NS1mYTQ0LTQzNGItYjhkNi04NjY2ODU3ODMzYWQiLCJjdHkiOiJKV1QiLCJlbmMiOiJBMTkyQ0JDLUhTMzg0IiwiYWxnIjoiUEJFUzItSFMzODQrQTE5MktXIn0.hf6jZA3mcJ0KrTQ73qPKvw_0MhxmdBiIPq4Nj3pms8rRO5CkIgm0w97KVB-64RLe_e3U9B8Ri_o.FJccCQQ9kjBNTbEQAZCGeA.8BXZbaZDmC7uJnl-GFR9E6Pgjx0Qk9LwyaznVfCUUk_guRGHgwUYe7giX4dlXcthOaYiX2ufs5Sp-q-I-OTqtytUFDJp1SaT9TcKzAfISdkblfNBch61sAM6v5EmhHzJ54bgMSMnevZmbDys6Uf1il21XBhJNWSVT1hZL2LQlcbZBmQiL5-psH9hrhbEpBOxJGgKT6ys3H0HWzQhaC8h3W81k9RW3WwAlYc6uNX46innoHrsTxLSuvPZ3cTBdUdxDn0tK5eCVgZwD9m-lrPODs8N8PJsaooh4nVJwl7tbyolj6V41qiOV58s0qFhWXybB58s2_YZ8RP5YUD43bNvbYZTiZgsSOTAdUp-NENZPOQb6bOP8R0eM7aOQCDau8um1JXaCIh43XyxfAgAmPx4jN3QuXosb2wv7Gdfqrw8vU-D4Oke9XIguydFtUZ9InWCN94Aj1Tx1A10EfeUGSVMb8CjdzCGEpiWQcQq5QM1ilR5W_PvMZNgF8uV6zabn_5LdRHrdL3ctnKFNRZ1QSDCpBMDZrlFxnp3vF_E1yivzlNVwiT_4s117VgAog0oE7fY4oupkEBCM1eDG_puDuk_h6YCzA-wOW1SHr9EsIqrIf3xUNPyb7xY1MDli8XKjXIimyPGse4jn2YkRSHeMcxSEolShZBZhX0NIvC6VBszWCXxSJx_dMmA72S5DvqfwqfvEcTdtLTbS6w8_eRsKWHSvCArjnaTKF6NaVM1_3PVpd4.2kV3ApvzkQUikGdP87_GhmPCAuBp1znt';
 
-        // FUNCIÓN DE LOGIN
-        function iniciarLogin() {
-            if (!CLIENT_ID) {
-                alert('Atención: La variable CLIENT_ID está vacía.');
-                return;
-            }
+        // AQUÍ AGREGAS EL NÚMERO O EXTENSIÓN DE DESTINO (ej: '+56912345678' o '1001' o correo SIP)
+        const NUMERO_DESTINO = '+56225652000'; 
 
-            document.getElementById('status-box').innerText = "Redirigiendo al portal de Webex...";
+        let webexInstance = null;
+        let activeMeeting = null;
 
-            // Generar URL para flujo Implicit Grant (OAuth 2.0)
-            const authUrl = "https://webexapis.com/v1/authorize?" +
-                "client_id=" + encodeURIComponent(CLIENT_ID) +
-                "&response_type=token" +
-                "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +
-                "&scope=" + encodeURIComponent(SCOPES);
+        const statusBox = document.getElementById('status-box');
+        const callBtn = document.getElementById('call-btn');
+        const hangupBtn = document.getElementById('hangup-btn');
 
-            window.location.href = authUrl;
-        }
-
-        // CAPTURA DEL TOKEN TRAS AUTENTICARSE
-        window.addEventListener('load', function() {
-            const statusBox = document.getElementById('status-box');
-
-            // Capturar access_token de la URL (#access_token=...)
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
-
-            if (accessToken) {
-                statusBox.innerText = "Conectando SDK con Webex...";
-
-                // Validar que la librería se haya expuesto globalmente
+        // =========================================================
+        // INICIALIZACIÓN DE LA SESIÓN DE INVITADO (GUEST JWE)
+        // =========================================================
+        window.addEventListener('load', async function() {
+            try {
                 if (typeof window.Webex === 'undefined') {
-                    statusBox.innerText = "Error: El SDK de Webex no pudo cargarse en el navegador.";
+                    statusBox.innerText = "Error: El SDK no cargó correctamente.";
                     return;
                 }
 
-                try {
-                    const webex = window.Webex.init({
-                        credentials: { access_token: accessToken }
-                    });
+                statusBox.innerText = "Registrando token JWE...";
 
-                    webex.once('ready', function() {
-                        webex.people.get('me').then(function(person) {
-                            document.getElementById('user-email').innerText = person.emails[0];
-                            document.getElementById('auth-section').style.display = 'none';
-                            document.getElementById('calling-section').style.display = 'block';
-                            statusBox.innerText = "Sesión iniciada correctamente.";
-                        });
-                    });
+                // Inicializar Webex con el Token JWE
+                webexInstance = window.Webex.init({
+                    credentials: {
+                        supertoken: JWE_TOKEN
+                    }
+                });
 
-                    document.getElementById('call-btn').addEventListener('click', function() {
-                        const destination = document.getElementById('dial-number').value;
-                        if (!destination) return alert('Ingresa un número de destino');
+                await webexInstance.once('ready');
 
-                        statusBox.innerText = "Iniciando llamada a " + destination + "...";
+                // Registrar el cliente en la red de Cisco
+                statusBox.innerText = "Registrando dispositivo en la red Webex...";
+                await webexInstance.meetings.register();
 
-                        webex.meetings.create(destination).then(function(meeting) {
-                            meeting.join();
-                            statusBox.innerText = "Llamada iniciada hacia: " + destination;
-                        }).catch(function(err) {
-                            statusBox.innerText = "Error al llamar: " + (err.message || err);
-                        });
-                    });
+                statusBox.innerText = "Listo para llamar a " + NUMERO_DESTINO;
+                callBtn.innerText = "Llamar a Soporte";
+                callBtn.disabled = false;
 
-                } catch (e) {
-                    statusBox.innerText = "Error cargando SDK: " + e.message;
-                }
-            } else {
-                statusBox.innerText = "Haz clic en 'Iniciar Sesión con Webex' para comenzar.";
+            } catch (error) {
+                console.error("Error inicializando JWE:", error);
+                statusBox.innerText = "Error de autenticación JWE: " + (error.message || error);
             }
         });
+
+        // =========================================================
+        // EXECUCIÓN DE LA LLAMADA AL NÚMERO CONFIGURADO
+        // =========================================================
+        callBtn.addEventListener('click', async function() {
+            if (!webexInstance) return;
+
+            try {
+                statusBox.innerText = "Llamando a " + NUMERO_DESTINO + "...";
+                callBtn.disabled = true;
+
+                // Solicitar acceso al micrófono
+                const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+
+                // AHORA SÍ: Pasamos la variable NUMERO_DESTINO al método create()
+                activeMeeting = await webexInstance.meetings.create(NUMERO_DESTINO);
+
+                // Escuchar eventos de audio entrante
+                activeMeeting.on('media:stream:change', (media) => {
+                    if (media.type === 'remoteAudio') {
+                        document.getElementById('remote-audio').srcObject = media.stream;
+                    }
+                });
+
+                activeMeeting.on('error', (err) => {
+                    console.error("Error en la llamada:", err);
+                    restablecerInterfaz("Error: " + err.message);
+                });
+
+                // Conectar llamada con audio bidireccional
+                await activeMeeting.join();
+                await activeMeeting.addMedia({
+                    mediaSettings: { sendAudio: true, receiveAudio: true },
+                    stream: mediaStream
+                });
+
+                callBtn.style.display = 'none';
+                hangupBtn.style.display = 'inline-block';
+                statusBox.innerText = "Llamada conectada con: " + NUMERO_DESTINO;
+
+            } catch (err) {
+                console.error("Error al iniciar la llamada:", err);
+                statusBox.innerText = "Error al marcar: " + (err.message || err);
+                callBtn.disabled = false;
+            }
+        });
+
+        // =========================================================
+        // COLGAR LLAMADA
+        // =========================================================
+        hangupBtn.addEventListener('click', async function() {
+            if (activeMeeting) {
+                try {
+                    await activeMeeting.leave();
+                    restablecerInterfaz("Llamada finalizada.");
+                } catch (e) {
+                    console.error("Error al colgar:", e);
+                }
+            }
+        });
+
+        function restablecerInterfaz(mensaje) {
+            statusBox.innerText = mensaje;
+            callBtn.style.display = 'inline-block';
+            callBtn.disabled = false;
+            hangupBtn.style.display = 'none';
+            activeMeeting = null;
+        }
     </script>
 </body>
 </html>
