@@ -7,15 +7,21 @@
     
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; }
-        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; text-align: center; margin: auto; }
+        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 420px; text-align: center; margin: auto; }
         .btn-call { background-color: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 25px; font-weight: bold; font-size: 16px; cursor: pointer; transition: background 0.3s; }
         .btn-call:hover { background-color: #218838; }
         .btn-call:disabled { background-color: #6c757d; cursor: not-allowed; }
         .btn-hangup { background-color: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 25px; font-weight: bold; font-size: 16px; cursor: pointer; display: none; margin: auto; }
         .btn-hangup:hover { background-color: #c82333; }
         .status { margin-top: 20px; padding: 10px; border-radius: 5px; background: #e9ecef; font-size: 14px; word-break: break-all; }
-        audio { display: none; }
+        
+        /* Contenedor del Widget de llamada Webex */
+        #webex-widget-container { width: 100%; height: 60px; margin-top: 15px; }
     </style>
+
+    <!-- Hojas de estilo y Script Oficial de Webex Widgets (Ligero para Navegador) -->
+    <link rel="stylesheet" href="https://code.s3.amazonaws.com/webex-widget-space/v1.129.0/main.css">
+    <script src="https://code.s3.amazonaws.com/webex-widget-space/v1.129.0/main.js"></script>
 </head>
 <body>
 
@@ -23,139 +29,87 @@
         <h2>Atención al Cliente</h2>
         <p>Presiona el botón para comunicarte con soporte.</p>
 
-        <!-- Canales de Audio para la llamada WebRTC -->
-        <audio id="remote-audio" autoplay></audio>
-        <audio id="local-audio" autoplay muted></audio>
-
-        <button id="call-btn" class="btn-call" type="button" disabled>Cargando librería...</button>
+        <button id="call-btn" class="btn-call" type="button" disabled>Inicializando Webex...</button>
         <button id="hangup-btn" class="btn-hangup" type="button">Colgar Llamada</button>
 
-        <div id="status-box" class="status">Descargando componentes de llamada...</div>
+        <div id="webex-widget-container"></div>
+
+        <div id="status-box" class="status">Cargando componentes de Webex...</div>
     </div>
 
-    <!-- Script de carga dinámica robusto -->
     <script>
+        // =========================================================
+        // CONFIGURACIÓN DE PARÁMETROS
+        // =========================================================
         const JWE_TOKEN = 'eyJwMnMiOiI3dU5qNFZTS1Y2blN6WEdIT0NjLTRTeGRBUGhwS01naHlyZ01SWHNwRklUVHZjMUY2VVBqdkU1LXZ3V3J3ZFVOIiwicDJjIjo3ODg4LCJraWQiOiJrbXM6Ly9rbXMtdXMud2J4Mi5jb20va2V5cy80MDYxOTQ1NS1mYTQ0LTQzNGItYjhkNi04NjY2ODU3ODMzYWQiLCJjdHkiOiJKV1QiLCJlbmMiOiJBMTkyQ0JDLUhTMzg0IiwiYWxnIjoiUEJFUzItSFMzODQrQTE5MktXIn0.hf6jZA3mcJ0KrTQ73qPKvw_0MhxmdBiIPq4Nj3pms8rRO5CkIgm0w97KVB-64RLe_e3U9B8Ri_o.FJccCQQ9kjBNTbEQAZCGeA.8BXZbaZDmC7uJnl-GFR9E6Pgjx0Qk9LwyaznVfCUUk_guRGHgwUYe7giX4dlXcthOaYiX2ufs5Sp-q-I-OTqtytUFDJp1SaT9TcKzAfISdkblfNBch61sAM6v5EmhHzJ54bgMSMnevZmbDys6Uf1il21XBhJNWSVT1hZL2LQlcbZBmQiL5-psH9hrhbEpBOxJGgKT6ys3H0HWzQhaC8h3W81k9RW3WwAlYc6uNX46innoHrsTxLSuvPZ3cTBdUdxDn0tK5eCVgZwD9m-lrPODs8N8PJsaooh4nVJwl7tbyolj6V41qiOV58s0qFhWXybB58s2_YZ8RP5YUD43bNvbYZTiZgsSOTAdUp-NENZPOQb6bOP8R0eM7aOQCDau8um1JXaCIh43XyxfAgAmPx4jN3QuXosb2wv7Gdfqrw8vU-D4Oke9XIguydFtUZ9InWCN94Aj1Tx1A10EfeUGSVMb8CjdzCGEpiWQcQq5QM1ilR5W_PvMZNgF8uV6zabn_5LdRHrdL3ctnKFNRZ1QSDCpBMDZrlFxnp3vF_E1yivzlNVwiT_4s117VgAog0oE7fY4oupkEBCM1eDG_puDuk_h6YCzA-wOW1SHr9EsIqrIf3xUNPyb7xY1MDli8XKjXIimyPGse4jn2YkRSHeMcxSEolShZBZhX0NIvC6VBszWCXxSJx_dMmA72S5DvqfwqfvEcTdtLTbS6w8_eRsKWHSvCArjnaTKF6NaVM1_3PVpd4.2kV3ApvzkQUikGdP87_GhmPCAuBp1znt';
+        
+        // Número de destino
         const NUMERO_DESTINO = '+56225652000'; 
-
-        let webexInstance = null;
-        let activeMeeting = null;
 
         const statusBox = document.getElementById('status-box');
         const callBtn = document.getElementById('call-btn');
         const hangupBtn = document.getElementById('hangup-btn');
+        const widgetContainer = document.getElementById('webex-widget-container');
 
-        // Función para cargar scripts dinámicamente con promesas
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = src;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-        }
-
-        async function initWebex() {
-            try {
-                statusBox.innerText = "Cargando componentes Webex...";
-                
-                // Intento de carga con espejo redundante CDN
-                try {
-                    await loadScript('https://cdn.jsdelivr.net/npm/webex@2.60.2/dist/webex.min.js');
-                } catch(e) {
-                    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/webex/2.60.2/webex.min.js');
-                }
-
-                if (typeof window.Webex === 'undefined') {
-                    throw new Error("No se pudo instanciar el objeto Webex en el navegador.");
-                }
-
-                statusBox.innerText = "Autenticando token de invitado (JWE)...";
-
-                webexInstance = window.Webex.init({
-                    credentials: {
-                        supertoken: JWE_TOKEN
-                    }
-                });
-
-                await webexInstance.once('ready');
-
-                statusBox.innerText = "Registrando servicio WebRTC...";
-                await webexInstance.meetings.register();
-
-                statusBox.innerText = "Listo para llamar a " + NUMERO_DESTINO;
+        window.addEventListener('load', function() {
+            // Verificar la presencia del objeto de widgets global de Cisco
+            if (typeof webex !== 'undefined' && webex.widget) {
+                statusBox.innerText = "Librería lista. Presiona para llamar a " + NUMERO_DESTINO;
                 callBtn.innerText = "Llamar a Soporte";
                 callBtn.disabled = false;
-
-            } catch (error) {
-                console.error("Error al inicializar:", error);
-                statusBox.innerText = "Error al cargar la librería: " + error.message + ". Asegúrate de abrir la página a través de un servidor (http/https) y no haciendo doble clic local al archivo (file://).";
+            } else {
+                statusBox.innerText = "Iniciando conector Webex...";
+                // Dar un segundo en caso de carga asíncrona
+                setTimeout(() => {
+                    if (typeof webex !== 'undefined' && webex.widget) {
+                        statusBox.innerText = "Librería lista. Presiona para llamar a " + NUMERO_DESTINO;
+                        callBtn.innerText = "Llamar a Soporte";
+                        callBtn.disabled = false;
+                    } else {
+                        statusBox.innerText = "Error: El navegador no pudo cargar el script Webex. Revisa la consola (F12).";
+                    }
+                }, 1500);
             }
-        }
-
-        window.addEventListener('load', initWebex);
+        });
 
         // =========================================================
-        // LLAMADA
+        // INICIAR LLAMADA VÍA WIDGET EMBEBIDO
         // =========================================================
-        callBtn.addEventListener('click', async function() {
-            if (!webexInstance) return;
-
+        callBtn.addEventListener('click', function() {
             try {
-                statusBox.innerText = "Iniciando llamada a " + NUMERO_DESTINO + "...";
+                statusBox.innerText = "Conectando llamada con " + NUMERO_DESTINO + "...";
                 callBtn.disabled = true;
 
-                const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-
-                activeMeeting = await webexInstance.meetings.create(NUMERO_DESTINO);
-
-                activeMeeting.on('media:stream:change', (media) => {
-                    if (media.type === 'remoteAudio') {
-                        document.getElementById('remote-audio').srcObject = media.stream;
-                    }
-                });
-
-                activeMeeting.on('error', (err) => {
-                    console.error("Error en la llamada:", err);
-                    restablecerInterfaz("Error: " + err.message);
-                });
-
-                await activeMeeting.join();
-                await activeMeeting.addMedia({
-                    mediaSettings: { sendAudio: true, receiveAudio: true },
-                    stream: mediaStream
+                // Cargar el widget de llamadas Webex directo en el DOM
+                webex.widget(widgetContainer).spaceWidget({
+                    accessToken: JWE_TOKEN,
+                    destinationType: 'phoneNumber', // o 'email' / 'SIP'
+                    destinationId: NUMERO_DESTINO,
+                    initialActivity: 'call',
+                    startCall: true
                 });
 
                 callBtn.style.display = 'none';
                 hangupBtn.style.display = 'inline-block';
-                statusBox.innerText = "Llamada conectada a: " + NUMERO_DESTINO;
+                statusBox.innerText = "Llamada iniciada correctamente.";
 
             } catch (err) {
-                console.error("Error al llamar:", err);
-                statusBox.innerText = "Error: " + (err.message || err);
+                console.error("Error al iniciar llamada:", err);
+                statusBox.innerText = "Error al conectar: " + (err.message || err);
                 callBtn.disabled = false;
             }
         });
 
-        hangupBtn.addEventListener('click', async function() {
-            if (activeMeeting) {
-                try {
-                    await activeMeeting.leave();
-                    restablecerInterfaz("Llamada finalizada.");
-                } catch (e) {
-                    console.error("Error al colgar:", e);
-                }
-            }
-        });
-
-        function restablecerInterfaz(mensaje) {
-            statusBox.innerText = mensaje;
+        // =========================================================
+        // COLGAR Y LIMPIAR
+        // =========================================================
+        hangupBtn.addEventListener('click', function() {
+            widgetContainer.innerHTML = ''; // Destruye el widget de la llamada
+            statusBox.innerText = "Llamada finalizada.";
             callBtn.style.display = 'inline-block';
             callBtn.disabled = false;
             hangupBtn.style.display = 'none';
-            activeMeeting = null;
-        }
+        });
     </script>
 </body>
 </html>
