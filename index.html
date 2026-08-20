@@ -16,16 +16,6 @@
         .status { margin-top: 20px; padding: 10px; border-radius: 5px; background: #e9ecef; font-size: 14px; word-break: break-all; }
         audio { display: none; }
     </style>
-
-    <!-- CDN Principal Oficial de Cisco Webex SDK -->
-    <script src="https://code.s3.amazonaws.com/webex-widget-builds/webex-sdk.min.js"></script>
-    
-    <!-- CDN de Respaldo en caso de que la primera falle -->
-    <script>
-        if (typeof window.Webex === 'undefined') {
-            document.write('<script src="https://unpkg.com/webex@2.60.2/dist/webex.min.js"><\/script>');
-        }
-    </script>
 </head>
 <body>
 
@@ -37,19 +27,15 @@
         <audio id="remote-audio" autoplay></audio>
         <audio id="local-audio" autoplay muted></audio>
 
-        <button id="call-btn" class="btn-call" type="button" disabled>Cargando SDK...</button>
+        <button id="call-btn" class="btn-call" type="button" disabled>Cargando librería...</button>
         <button id="hangup-btn" class="btn-hangup" type="button">Colgar Llamada</button>
 
-        <div id="status-box" class="status">Cargando dependencias de voz...</div>
+        <div id="status-box" class="status">Descargando componentes de llamada...</div>
     </div>
 
+    <!-- Script de carga dinámica robusto -->
     <script>
-        // =========================================================
-        // CONFIGURACIÓN DE PARÁMETROS
-        // =========================================================
         const JWE_TOKEN = 'eyJwMnMiOiI3dU5qNFZTS1Y2blN6WEdIT0NjLTRTeGRBUGhwS01naHlyZ01SWHNwRklUVHZjMUY2VVBqdkU1LXZ3V3J3ZFVOIiwicDJjIjo3ODg4LCJraWQiOiJrbXM6Ly9rbXMtdXMud2J4Mi5jb20va2V5cy80MDYxOTQ1NS1mYTQ0LTQzNGItYjhkNi04NjY2ODU3ODMzYWQiLCJjdHkiOiJKV1QiLCJlbmMiOiJBMTkyQ0JDLUhTMzg0IiwiYWxnIjoiUEJFUzItSFMzODQrQTE5MktXIn0.hf6jZA3mcJ0KrTQ73qPKvw_0MhxmdBiIPq4Nj3pms8rRO5CkIgm0w97KVB-64RLe_e3U9B8Ri_o.FJccCQQ9kjBNTbEQAZCGeA.8BXZbaZDmC7uJnl-GFR9E6Pgjx0Qk9LwyaznVfCUUk_guRGHgwUYe7giX4dlXcthOaYiX2ufs5Sp-q-I-OTqtytUFDJp1SaT9TcKzAfISdkblfNBch61sAM6v5EmhHzJ54bgMSMnevZmbDys6Uf1il21XBhJNWSVT1hZL2LQlcbZBmQiL5-psH9hrhbEpBOxJGgKT6ys3H0HWzQhaC8h3W81k9RW3WwAlYc6uNX46innoHrsTxLSuvPZ3cTBdUdxDn0tK5eCVgZwD9m-lrPODs8N8PJsaooh4nVJwl7tbyolj6V41qiOV58s0qFhWXybB58s2_YZ8RP5YUD43bNvbYZTiZgsSOTAdUp-NENZPOQb6bOP8R0eM7aOQCDau8um1JXaCIh43XyxfAgAmPx4jN3QuXosb2wv7Gdfqrw8vU-D4Oke9XIguydFtUZ9InWCN94Aj1Tx1A10EfeUGSVMb8CjdzCGEpiWQcQq5QM1ilR5W_PvMZNgF8uV6zabn_5LdRHrdL3ctnKFNRZ1QSDCpBMDZrlFxnp3vF_E1yivzlNVwiT_4s117VgAog0oE7fY4oupkEBCM1eDG_puDuk_h6YCzA-wOW1SHr9EsIqrIf3xUNPyb7xY1MDli8XKjXIimyPGse4jn2YkRSHeMcxSEolShZBZhX0NIvC6VBszWCXxSJx_dMmA72S5DvqfwqfvEcTdtLTbS6w8_eRsKWHSvCArjnaTKF6NaVM1_3PVpd4.2kV3ApvzkQUikGdP87_GhmPCAuBp1znt';
-
-        // Reemplaza con tu número o extensión de destino
         const NUMERO_DESTINO = '+56225652000'; 
 
         let webexInstance = null;
@@ -59,23 +45,35 @@
         const callBtn = document.getElementById('call-btn');
         const hangupBtn = document.getElementById('hangup-btn');
 
-        // =========================================================
-        // INICIALIZACIÓN DE LA SESIÓN DE INVITADO (GUEST JWE)
-        // =========================================================
-        window.addEventListener('load', async function() {
-            try {
-                // Verificar si la librería se cargó bajo window.Webex o window.WebexSDK
-                const WebexLib = window.Webex || window.WebexSDK;
+        // Función para cargar scripts dinámicamente con promesas
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
 
-                if (!WebexLib) {
-                    statusBox.innerText = "Error: El navegador o un bloqueador (AdBlock) impidió cargar la librería de Webex. Intenta desactivar bloqueadores de anuncios.";
-                    return;
+        async function initWebex() {
+            try {
+                statusBox.innerText = "Cargando componentes Webex...";
+                
+                // Intento de carga con espejo redundante CDN
+                try {
+                    await loadScript('https://cdn.jsdelivr.net/npm/webex@2.60.2/dist/webex.min.js');
+                } catch(e) {
+                    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/webex/2.60.2/webex.min.js');
                 }
 
-                statusBox.innerText = "Registrando token JWE con Cisco...";
+                if (typeof window.Webex === 'undefined') {
+                    throw new Error("No se pudo instanciar el objeto Webex en el navegador.");
+                }
 
-                // Inicializar la librería con el Supertoken JWE
-                webexInstance = WebexLib.init({
+                statusBox.innerText = "Autenticando token de invitado (JWE)...";
+
+                webexInstance = window.Webex.init({
                     credentials: {
                         supertoken: JWE_TOKEN
                     }
@@ -83,8 +81,7 @@
 
                 await webexInstance.once('ready');
 
-                // Registrar el cliente en la red de Cisco
-                statusBox.innerText = "Registrando servicio de voz WebRTC...";
+                statusBox.innerText = "Registrando servicio WebRTC...";
                 await webexInstance.meetings.register();
 
                 statusBox.innerText = "Listo para llamar a " + NUMERO_DESTINO;
@@ -92,19 +89,21 @@
                 callBtn.disabled = false;
 
             } catch (error) {
-                console.error("Error inicializando JWE:", error);
-                statusBox.innerText = "Error de autenticación JWE: " + (error.message || error);
+                console.error("Error al inicializar:", error);
+                statusBox.innerText = "Error al cargar la librería: " + error.message + ". Asegúrate de abrir la página a través de un servidor (http/https) y no haciendo doble clic local al archivo (file://).";
             }
-        });
+        }
+
+        window.addEventListener('load', initWebex);
 
         // =========================================================
-        // EXECUCIÓN DE LA LLAMADA
+        // LLAMADA
         // =========================================================
         callBtn.addEventListener('click', async function() {
             if (!webexInstance) return;
 
             try {
-                statusBox.innerText = "Solicitando micrófono y marcando a " + NUMERO_DESTINO + "...";
+                statusBox.innerText = "Iniciando llamada a " + NUMERO_DESTINO + "...";
                 callBtn.disabled = true;
 
                 const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -130,18 +129,15 @@
 
                 callBtn.style.display = 'none';
                 hangupBtn.style.display = 'inline-block';
-                statusBox.innerText = "Llamada en curso hacia: " + NUMERO_DESTINO;
+                statusBox.innerText = "Llamada conectada a: " + NUMERO_DESTINO;
 
             } catch (err) {
-                console.error("Error al iniciar la llamada:", err);
-                statusBox.innerText = "Error al marcar: " + (err.message || err);
+                console.error("Error al llamar:", err);
+                statusBox.innerText = "Error: " + (err.message || err);
                 callBtn.disabled = false;
             }
         });
 
-        // =========================================================
-        // COLGAR LLAMADA
-        // =========================================================
         hangupBtn.addEventListener('click', async function() {
             if (activeMeeting) {
                 try {
