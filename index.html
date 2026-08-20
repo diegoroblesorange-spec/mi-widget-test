@@ -17,23 +17,30 @@
         audio { display: none; }
     </style>
 
-    <!-- SDK UMD Universal de Webex -->
-    <script src="https://cdn.jsdelivr.net/npm/webex@2.60.2/dist/webex.min.js" crossorigin="anonymous"></script>
+    <!-- CDN Principal Oficial de Cisco Webex SDK -->
+    <script src="https://code.s3.amazonaws.com/webex-widget-builds/webex-sdk.min.js"></script>
+    
+    <!-- CDN de Respaldo en caso de que la primera falle -->
+    <script>
+        if (typeof window.Webex === 'undefined') {
+            document.write('<script src="https://unpkg.com/webex@2.60.2/dist/webex.min.js"><\/script>');
+        }
+    </script>
 </head>
 <body>
 
     <div class="card">
         <h2>Atención al Cliente</h2>
-        <p>Presiona el botón para comunicarse con soporte.</p>
+        <p>Presiona el botón para comunicarte con soporte.</p>
 
         <!-- Canales de Audio para la llamada WebRTC -->
         <audio id="remote-audio" autoplay></audio>
         <audio id="local-audio" autoplay muted></audio>
 
-        <button id="call-btn" class="btn-call" type="button" disabled>Inicializando...</button>
+        <button id="call-btn" class="btn-call" type="button" disabled>Cargando SDK...</button>
         <button id="hangup-btn" class="btn-hangup" type="button">Colgar Llamada</button>
 
-        <div id="status-box" class="status">Conectando servicio...</div>
+        <div id="status-box" class="status">Cargando dependencias de voz...</div>
     </div>
 
     <script>
@@ -42,7 +49,7 @@
         // =========================================================
         const JWE_TOKEN = 'eyJwMnMiOiI3dU5qNFZTS1Y2blN6WEdIT0NjLTRTeGRBUGhwS01naHlyZ01SWHNwRklUVHZjMUY2VVBqdkU1LXZ3V3J3ZFVOIiwicDJjIjo3ODg4LCJraWQiOiJrbXM6Ly9rbXMtdXMud2J4Mi5jb20va2V5cy80MDYxOTQ1NS1mYTQ0LTQzNGItYjhkNi04NjY2ODU3ODMzYWQiLCJjdHkiOiJKV1QiLCJlbmMiOiJBMTkyQ0JDLUhTMzg0IiwiYWxnIjoiUEJFUzItSFMzODQrQTE5MktXIn0.hf6jZA3mcJ0KrTQ73qPKvw_0MhxmdBiIPq4Nj3pms8rRO5CkIgm0w97KVB-64RLe_e3U9B8Ri_o.FJccCQQ9kjBNTbEQAZCGeA.8BXZbaZDmC7uJnl-GFR9E6Pgjx0Qk9LwyaznVfCUUk_guRGHgwUYe7giX4dlXcthOaYiX2ufs5Sp-q-I-OTqtytUFDJp1SaT9TcKzAfISdkblfNBch61sAM6v5EmhHzJ54bgMSMnevZmbDys6Uf1il21XBhJNWSVT1hZL2LQlcbZBmQiL5-psH9hrhbEpBOxJGgKT6ys3H0HWzQhaC8h3W81k9RW3WwAlYc6uNX46innoHrsTxLSuvPZ3cTBdUdxDn0tK5eCVgZwD9m-lrPODs8N8PJsaooh4nVJwl7tbyolj6V41qiOV58s0qFhWXybB58s2_YZ8RP5YUD43bNvbYZTiZgsSOTAdUp-NENZPOQb6bOP8R0eM7aOQCDau8um1JXaCIh43XyxfAgAmPx4jN3QuXosb2wv7Gdfqrw8vU-D4Oke9XIguydFtUZ9InWCN94Aj1Tx1A10EfeUGSVMb8CjdzCGEpiWQcQq5QM1ilR5W_PvMZNgF8uV6zabn_5LdRHrdL3ctnKFNRZ1QSDCpBMDZrlFxnp3vF_E1yivzlNVwiT_4s117VgAog0oE7fY4oupkEBCM1eDG_puDuk_h6YCzA-wOW1SHr9EsIqrIf3xUNPyb7xY1MDli8XKjXIimyPGse4jn2YkRSHeMcxSEolShZBZhX0NIvC6VBszWCXxSJx_dMmA72S5DvqfwqfvEcTdtLTbS6w8_eRsKWHSvCArjnaTKF6NaVM1_3PVpd4.2kV3ApvzkQUikGdP87_GhmPCAuBp1znt';
 
-        // AQUÍ AGREGAS EL NÚMERO O EXTENSIÓN DE DESTINO (ej: '+56912345678' o '1001' o correo SIP)
+        // Reemplaza con tu número o extensión de destino
         const NUMERO_DESTINO = '+56225652000'; 
 
         let webexInstance = null;
@@ -57,15 +64,18 @@
         // =========================================================
         window.addEventListener('load', async function() {
             try {
-                if (typeof window.Webex === 'undefined') {
-                    statusBox.innerText = "Error: El SDK no cargó correctamente.";
+                // Verificar si la librería se cargó bajo window.Webex o window.WebexSDK
+                const WebexLib = window.Webex || window.WebexSDK;
+
+                if (!WebexLib) {
+                    statusBox.innerText = "Error: El navegador o un bloqueador (AdBlock) impidió cargar la librería de Webex. Intenta desactivar bloqueadores de anuncios.";
                     return;
                 }
 
-                statusBox.innerText = "Registrando token JWE...";
+                statusBox.innerText = "Registrando token JWE con Cisco...";
 
-                // Inicializar Webex con el Token JWE
-                webexInstance = window.Webex.init({
+                // Inicializar la librería con el Supertoken JWE
+                webexInstance = WebexLib.init({
                     credentials: {
                         supertoken: JWE_TOKEN
                     }
@@ -74,7 +84,7 @@
                 await webexInstance.once('ready');
 
                 // Registrar el cliente en la red de Cisco
-                statusBox.innerText = "Registrando dispositivo en la red Webex...";
+                statusBox.innerText = "Registrando servicio de voz WebRTC...";
                 await webexInstance.meetings.register();
 
                 statusBox.innerText = "Listo para llamar a " + NUMERO_DESTINO;
@@ -88,22 +98,19 @@
         });
 
         // =========================================================
-        // EXECUCIÓN DE LA LLAMADA AL NÚMERO CONFIGURADO
+        // EXECUCIÓN DE LA LLAMADA
         // =========================================================
         callBtn.addEventListener('click', async function() {
             if (!webexInstance) return;
 
             try {
-                statusBox.innerText = "Llamando a " + NUMERO_DESTINO + "...";
+                statusBox.innerText = "Solicitando micrófono y marcando a " + NUMERO_DESTINO + "...";
                 callBtn.disabled = true;
 
-                // Solicitar acceso al micrófono
                 const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
 
-                // AHORA SÍ: Pasamos la variable NUMERO_DESTINO al método create()
                 activeMeeting = await webexInstance.meetings.create(NUMERO_DESTINO);
 
-                // Escuchar eventos de audio entrante
                 activeMeeting.on('media:stream:change', (media) => {
                     if (media.type === 'remoteAudio') {
                         document.getElementById('remote-audio').srcObject = media.stream;
@@ -115,7 +122,6 @@
                     restablecerInterfaz("Error: " + err.message);
                 });
 
-                // Conectar llamada con audio bidireccional
                 await activeMeeting.join();
                 await activeMeeting.addMedia({
                     mediaSettings: { sendAudio: true, receiveAudio: true },
@@ -124,7 +130,7 @@
 
                 callBtn.style.display = 'none';
                 hangupBtn.style.display = 'inline-block';
-                statusBox.innerText = "Llamada conectada con: " + NUMERO_DESTINO;
+                statusBox.innerText = "Llamada en curso hacia: " + NUMERO_DESTINO;
 
             } catch (err) {
                 console.error("Error al iniciar la llamada:", err);
