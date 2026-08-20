@@ -3,19 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webex Calling SDK - Opción 2</title>
-
-    <!-- 1. Librerías requeridas por la guía oficial de Webex Calling -->
-    <script src="https://code.s3.amazonaws.com/webex-widget-builds/webex-sdk.min.js"></script>
-    <script src="https://unpkg.com/@webex/calling-sdk/dist/webex-calling-sdk.min.js"></script>
-
+    <title>Webex Calling Widget</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f4f7f6; }
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; }
         .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 450px; }
-        button { background-color: #007a87; color: white; border: none; padding: 10px 18px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        button { background-color: #007a87; color: white; border: none; padding: 12px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 15px; }
         button:hover { background-color: #005a63; }
         input { padding: 10px; border: 1px solid #ccc; border-radius: 5px; width: 65%; margin-right: 5px; }
-        .status { margin-top: 15px; padding: 10px; border-radius: 5px; background: #e9ecef; font-size: 14px; }
+        .status { margin-top: 15px; padding: 10px; border-radius: 5px; background: #e9ecef; font-size: 14px; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -23,113 +18,98 @@
     <div class="card">
         <h2>Webex Calling Widget</h2>
         
-        <!-- Estado A: Sin Autenticar -->
         <div id="auth-section">
             <p>Conéctate con tu cuenta de Webex Calling para activar el teléfono web.</p>
-            <button id="login-btn">Iniciar Sesión con Webex</button>
+            <button id="login-btn" type="button" onclick="iniciarLogin()">Iniciar Sesión con Webex</button>
         </div>
 
-        <!-- Estado B: Autenticado y listo para llamar -->
         <div id="calling-section" style="display: none;">
             <p><strong>Usuario:</strong> <span id="user-email">Cargando...</span></p>
             <hr>
             <div style="margin-top: 15px;">
                 <input type="text" id="dial-number" placeholder="Ej: +56912345678 o 1001">
-                <button id="call-btn">Llamar</button>
+                <button id="call-btn" type="button">Llamar</button>
             </div>
         </div>
 
         <div id="status-box" class="status">Esperando acción...</div>
     </div>
 
+    <!-- Librería oficial de Webex (Alojada en Cisco S3 sin problemas de MIME Type) -->
+    <script src="https://code.s3.amazonaws.com/webex-widget-builds/webex-sdk.min.js"></script>
+
     <script>
         // =========================================================
-        // CONFIGURACIÓN DE TU APLICACIÓN
+        // CONFIGURACIÓN
         // =========================================================
-        const CLIENT_ID = 'Ca184ab2598ff70c8b60130eb358c608cef020a783b0f39c2c4c6e88291458f59'; // Reemplaza conservando las comillas
+        const CLIENT_ID = 'Ca184ab2598ff70c8b60130eb358c608cef020a783b0f39c2c4c6e88291458f59'; // Conserva comillas
         const SCOPES = 'spark:calls_write spark:telephony_config_write spark:kms spark:webrtc_calling guest-issuer:read spark-admin:calls_write spark:telephony_config_read guest-issuer:write spark-admin:telephony_config_read spark-admin:telephony_config_write';
-        const REDIRECT_URI = window.location.origin + window.location.pathname;
+        
+        // Garantiza que la URI enviada coincida con la registrada
+        const REDIRECT_URI = window.location.protocol + '//' + window.location.host + window.location.pathname;
 
-        const statusBox = document.getElementById('status-box');
-        let webexCallingClient = null;
+        function iniciarLogin() {
+            if (CLIENT_ID === 'TU_CLIENT_ID_REAL_AQUI' || !CLIENT_ID) {
+                alert('Atención: Debes reemplazar CLIENT_ID con el tu valor real.');
+                return;
+            }
 
-        // ---------------------------------------------------------
-        // PASO 1: Redirigir al usuario al Login de Webex
-        // ---------------------------------------------------------
-        document.getElementById('login-btn').addEventListener('click', () => {
-            const authUrl = `https://webexapis.com/v1/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
+            document.getElementById('status-box').innerText = "Redirigiendo al portal de Webex...";
+
+            // Generar flujo Implicit Grant de OAuth 2.0
+            const authUrl = "https://webexapis.com/v1/authorize?" +
+                "client_id=" + encodeURIComponent(CLIENT_ID) +
+                "&response_type=token" +
+                "&redirect_uri=" + encodeURIComponent(REDIRECT_URI) +
+                "&scope=" + encodeURIComponent(SCOPES);
+
             window.location.href = authUrl;
-        });
+        }
 
-        // ---------------------------------------------------------
-        // PASO 2: Detectar el Token al regresar y Registrar el SDK
-        // ---------------------------------------------------------
-        window.addEventListener('DOMContentLoaded', async () => {
-            // Extraer el access_token del fragmento hash de la URL (#access_token=...)
-            const hashParams = new URLSearchParams(window.location.hash.substring(1));
-            const accessToken = hashParams.get('access_token');
+        window.addEventListener('load', function() {
+            const statusBox = document.getElementById('status-box');
+
+            // Capturar access_token tras la autorización de Webex (#access_token=...)
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
 
             if (accessToken) {
-                statusBox.innerText = "Token detectado. Inicializando Webex Calling SDK...";
+                statusBox.innerText = "Conectando SDK con Webex...";
 
                 try {
-                    // 1. Inicializar la instancia base de Webex
                     const webex = window.Webex.init({
                         credentials: { access_token: accessToken }
                     });
 
-                    await webex.once('ready');
-                    
-                    // Obtener correo del usuario
-                    const person = await webex.people.get('me');
-                    document.getElementById('user-email').innerText = person.emails[0];
-
-                    // 2. Inicializar el Calling SDK (Según Guía Opción 2)
-                    webexCallingClient = new window.WebexCalling.CallingClient({
-                        webex: webex
+                    webex.once('ready', function() {
+                        webex.people.get('me').then(function(person) {
+                            document.getElementById('user-email').innerText = person.emails[0];
+                            document.getElementById('auth-section').style.display = 'none';
+                            document.getElementById('calling-section').style.display = 'block';
+                            statusBox.innerText = "Sesión iniciada correctamente.";
+                        });
                     });
 
-                    // Registrar la sesión en las líneas de telefonía de Cisco
-                    await webexCallingClient.register();
+                    document.getElementById('call-btn').addEventListener('click', function() {
+                        const destination = document.getElementById('dial-number').value;
+                        if (!destination) return alert('Ingresa un número de destino');
 
-                    // Cambiar vista de la interfaz
-                    document.getElementById('auth-section').style.display = 'none';
-                    document.getElementById('calling-section').style.display = 'block';
-                    statusBox.innerText = "¡Línea registrada y lista para realizar llamadas!";
+                        statusBox.innerText = "Iniciando llamada a " + destination + "...";
 
-                } catch (error) {
-                    console.error("Error al registrar Webex Calling:", error);
-                    statusBox.innerText = "Error de registro: " + (error.message || error);
+                        webex.meetings.create(destination).then(function(meeting) {
+                            meeting.join();
+                            statusBox.innerText = "Llamada iniciada hacia: " + destination;
+                        }).catch(function(err) {
+                            statusBox.innerText = "Error al llamar: " + (err.message || err);
+                        });
+                    });
+
+                } catch (e) {
+                    statusBox.innerText = "Error cargando SDK: " + e.message;
                 }
             } else {
-                statusBox.innerText = "Haz clic en 'Iniciar Sesión' para comenzar.";
-            }
-        });
-
-        // ---------------------------------------------------------
-        // PASO 3: Lógica para Originación de Llamada (Dial)
-        // ---------------------------------------------------------
-        document.getElementById('call-btn').addEventListener('click', async () => {
-            const destination = document.getElementById('dial-number').value;
-            if (!destination) return alert('Por favor ingresa un número de destino');
-
-            if (!webexCallingClient) {
-                return alert('El servicio de llamadas aún no está registrado.');
-            }
-
-            try {
-                statusBox.innerText = `Llamando a ${destination}...`;
-                
-                // Invocar la función de marcación del Calling SDK
-                const call = await webexCallingClient.makeCall({
-                    destination: destination
-                });
-
-                statusBox.innerText = `Llamada en curso hacia: ${destination}`;
-                
-            } catch (err) {
-                console.error("Error al marcar:", err);
-                statusBox.innerText = "Error al realizar la llamada: " + err.message;
+                statusBox.innerText = "Haz clic en 'Iniciar Sesión con Webex' para comenzar.";
             }
         });
     </script>
