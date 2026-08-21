@@ -22,14 +22,16 @@
   <input id="jweToken" placeholder="Pega aquí el JWE token" />
 
   <label>Destino</label>
-  <input id="destination" placeholder="+56..." value="+56225652000" />
+  <input id="destination" placeholder="+56..." value="+56212345678" />
 
   <button id="btnInit">Inicializar</button>
   <button id="btnCall" disabled>Llamar</button>
 
   <div id="status">Estado: esperando...</div>
 
-  <script src="https://webex.github.io/webex-js-sdk/webex.min.js"></script>
+  <!-- SDK de Webex (bundle que expone Webex global) -->
+  <script src="https://unpkg.com/webex@latest/dist/webex.min.js"></script>
+
   <script>
     let calling;
     let micStream;
@@ -40,6 +42,12 @@
 
     document.getElementById('btnInit').addEventListener('click', async () => {
       try {
+        if (typeof Webex === 'undefined') {
+          status('Error: Webex no está cargado. Revisa la consola del navegador.');
+          console.error('Webex is not defined');
+          return;
+        }
+
         const guestToken = document.getElementById('guestToken').value.trim();
         const jweToken = document.getElementById('jweToken').value.trim();
 
