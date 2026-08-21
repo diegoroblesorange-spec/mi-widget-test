@@ -1,171 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webex Click-to-Call (JWE Validation)</title>
-    
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f7f6; }
-        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 420px; text-align: center; margin: auto; }
-        .btn-call { background-color: #28a745; color: white; border: none; padding: 14px 28px; border-radius: 25px; font-weight: bold; font-size: 16px; cursor: pointer; transition: background 0.3s; }
-        .btn-call:hover { background-color: #218838; }
-        .btn-call:disabled { background-color: #6c757d; cursor: not-allowed; }
-        .btn-hangup { background-color: #dc3545; color: white; border: none; padding: 14px 28px; border-radius: 25px; font-weight: bold; font-size: 16px; cursor: pointer; display: none; margin: 15px auto 0 auto; }
-        .btn-hangup:hover { background-color: #c82333; }
-        .status { margin-top: 20px; padding: 10px; border-radius: 5px; background: #e9ecef; font-size: 14px; word-break: break-all; text-align: left; }
-        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        audio { display: none; }
-    </style>
-
-    <!-- Carga del cliente Webex distribuido por Cloudflare (Libre de errores CORS/MIME) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/webex/2.60.2/webex.min.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Webex Click to Call</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 720px; margin: 40px auto; padding: 16px; }
+    input, button { padding: 10px; font-size: 16px; }
+    input { width: 100%; margin: 8px 0 16px; }
+    button { cursor: pointer; }
+    #status { margin-top: 16px; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
+  <h1>Webex Click to Call</h1>
 
-    <div class="card">
-        <h2>Prueba de Conexión Webex</h2>
-        <p>Validación de Token JWE y Llamada de Voz</p>
+  <label>Guest token</label>
+  <input id="guestToken" placeholder="eyJhbGciOiJSUzI1NiJ9.eyJtYWNoaW5lX3R5cGUiOiJhcHB1c2VyIiwiY2x1c3RlciI6IlAwQTEiLCJwcml2YXRlIjoiZXlKamRIa2lPaUpLVjFRaUxDSmxibU1pT2lKQk1USTRRMEpETFVoVE1qVTJJaXdpWVd4bklqb2laR2x5SW4wLi5ZSmNCOVZzMW5kUG9FSU9lSVVWVVdnLkZLelAwbFRIcVBDdUdEMUVPUUp1ak1taERDQkhHSWswWTBjdXl2cnhPNUxjbHBYMXZvMVgwaHdZSEQtUFZUclB3T3hzQ1NSZldZQm1HYzVvSnZJWmJSdmljN3NWZ0JYeEp4c3FXUGZ4STcxUHh4VVlpN19SYlktaTlFLVJ5aHJUeWwySExRNGg3U2l1cldYNU5OOWlTLWRLbnVUZFJtWjRra1MwdTE5N2pTakN2S1pCazZHLUxKUk03N2dJMDRjb3ZsWGVNN011b2hNMXo3RHNkLTFXT2w2a1pCMFBVMnJUOEtuSjJXRm9GdDc0M09HeV85QndEWEJqUWd0S0ZUSWI0V3FXU1dFS1NhNjlOaFhSTi1JZWl0UHNjZnJhYmszTVVycERITUVJWGxoczZDN2RhVjR1aUlSVmpnUkJEdE9JSF82RTFxMno3WjViVjhLeWxPdHdXcWp6bUxsR2hpLWpZUHFtSjlJWUdJLU4tdTVZbzlNLXVya0xnYV9RV25nM1F6V2xTdmdSOHFnWG8xaG1rZHJBVzMwQmZWSVZ1VjlFWk1WdjJaaDQ3SWh5TlhnNC00dWVQcDZqOUtpN0ZtblMxRzBtVkpKMUZIdVpVRHBrRll0MzM4YzYwSUdnWE5XVUljbTZtY0dKRjlpLW4tdDFJTDMtTlY3ajZpVEtFYVdOSEd1cjhNWmxSeUJueWQzN1VLRW1LT2E0bUF0bjBET20zNnRqYTJXNGd6MFFPam5kdVpZNGNyM1NKbmxuWE9oUEw1UHZwUmJkOUJ3a0JTSVB3TmdSX2lLRllpakhKeVFOMmdwRHM4d2gyM1BFaG0yVFNaclVxQzcwNVpCZElXN3BPQXR5a0JNSmQzejZkV0xvTzdib1M4NzhBN0R2RTNLWGRYNURqN1dSbHZnLmd2VnVfRjk2VkVDeUE1Zmw2aUUxQkEiLCJyZWZlcmVuY2VfaWQiOiJiNGQ2NzIzYS0yYTZhLTQ0MDUtODc5Zi01NTQ0ZDJjZmUzMTEiLCJpc3MiOiJodHRwczovL2lkYnJva2VyLWItdXMud2ViZXguY29tL2lkYiIsInRva2VuX3R5cGUiOiJCZWFyZXIiLCJ0b2tlbl9ncm91cF9pZCI6ImJmNDNmZWI4LTBkYjYtNDNhNy05NzgzLWUwYTFkNjViMzZhNiIsImNsaWVudF9pZCI6IkMzMTE3NzIzYTBhNGM5ODVhOGJkNmRkYTc2Zjc3NjZjNTEzMjRiNmY0MWJmNGZlZjFjMmM4Mjc4NGExZjI5NzVjIiwidXNlcl90eXBlIjoibWFjaGluZSIsInRva2VuX2lkIjoiQWFaM3IwTURCbU1URTBPR0V0TnpVek5pMDBaR001TFRobFltTXROVFUxWlRneU16YzNNMlV3TWpkbU5qQm1ZakV0T1dNMSIsIm9yZ19pZCI6ImNlNGEyMDViLTA1MmEtNDE3Yy04ZGIzLTdkNTgyYTEwYjI1ZSIsInVzZXJfbW9kaWZ5X3RpbWVzdGFtcCI6IjIwMjYwODIxMDE1NTAwLjAxNVoiLCJyZWFsbSI6ImNlNGEyMDViLTA1MmEtNDE3Yy04ZGIzLTdkNTgyYTEwYjI1ZSIsImNpc191dWlkIjoiMjJjYmEwNDQtNzBiYS00MjQyLTgxMjYtMTRkYzY3MTkwOGNmIiwiZXhwaXJ5X3RpbWUiOjE3ODczNDIwOTkzMjcsImV4cCI6MTc4NzM0MjA5OTMyN30.FqJ-_NiMjhXhKwLGPuiXFYONtO0YlhGHH_rSbVy-iN2BLJzc4CUSAaCUsF7isKIWZz6L7wJGeyYfuwqgeKhPCJaRPqyI4p-cx0G_IuDaAHl_L0X8YZ1cJEd7k0ywEHu2tCkh7flGuN-I8vg-M80QVNUhuEpCXfrbupQaqU9SlwAhIHwTvW7PApX0o8Sz6lwvmehYMQ8V2qY8bPx4ggX18Tig7L5VzWGYSjU8u8eQNx7BoqKH5L40yfn1m2y1Wa5rM_tGjd74-lCzJ55DMS62AMse2b-Md1At6oLGq1pMHbNOzW4xNsd0L5aLa4onyuX_wsTvbEVxI8ami-yp1H55jQ" />
 
-        <!-- Elementos de Audio para la llamada WebRTC -->
-        <audio id="remote-audio" autoplay></audio>
-        <audio id="local-audio" autoplay muted></audio>
+  <label>JWE token</label>
+  <input id="jweToken" placeholder="eyJwMnMiOiJKZjB0akRyZ09YQnhMY3ZERlE5TWxZLUc0WElpUUFydTRVUVBTSWtPRk9FLUJwT2RhNDQiLCJwMmMiOjE3MzcxLCJraWQiOiJrbXM6Ly9rbXMtdXMud2J4Mi5jb20va2V5cy80MDYxOTQ1NS1mYTQ0LTQzNGItYjhkNi04NjY2ODU3ODMzYWQiLCJjdHkiOiJKV1QiLCJlbmMiOiJBMTkyQ0JDLUhTMzg0IiwiYWxnIjoiUEJFUzItSFMzODQrQTE5MktXIn0.1DfEmv8GJPM2pqUIQsUgdC4wr-OsXo4nYUpj0pyGbMvNT8ym8w4l18ouW5lKdnriIxcWgJq3wM4.XhZ52RGg09Vwhb06qVg_Bw.rDD-rS5jiCc42z18PpyJ_zm9gJlb0yorqsMeCtwuzsaupJUMZoctVJxekPWSKltQCDHU8mhrSOLQVUdl6zNKkkwO2HjIXNyrTUbmn8_m5apuDVX33viHQ30CSX-i0LqvuJI6BME4tpJS-jl_ZQn-BNnhpws9xMGdyM_0N35sBRg3AJ7yCaPmA83BlRuP4S7bfhrgPpU_QHOmLeExRAQAGRlcbO0G17DB5b33hLWhMBdm6eeqo98u2k8qCWGUB4wbMFiPZ0Z2At2zs_rMcgQvrLgKZlrYsdvOc0Pa1SxoWvqoPg6juDhtp75d3R0kuFTCvySREfBc8cIlSCeWtEvbvfia6dB0qJK8iWfIMM3zr4OVCm6XUK7-6aj2e_Sz_5s-s3sK72CengPtQJRxXNmCnM4bIJf9LpWF5sYfMQxk9gf2NwVw7sNP0Jiy6U9p7AVASkpy-DRr054oKpLz1YMpy-tbA0EP74qBuiKYA0kyVkOVl9FxsffKLnn17-GKcoXDJIAhj1dBvVP6smdb5NJ18OkIGo44yHt10cQoOZfM-yR4hy2nvvJwfsvf9Jc5bYm7MGNow8P3RtAZdlZPU3kTI6KEovb9rj9E3DPfMMI_EO2r4ZorFJcHSYVpEFbuOpQfE8lRE402VsMErk-d45BFkOr1deA7n-zVJ0Vnt-wK_uR4xFEaazWU1TuW-G07sy73hJBltZD4nyqBDj_9sEIbYimT_CZmeX3O8YB09kv60k8ZG1yy-9w-IhhogMvgwRo5ymQaR5k1I56Qc2CxvsGLCTDkP22zELjq_dU3bmEMdwjA8uyCYJ2NoAPdN0-3omuHheMda7ApOjMEGA01H6LEVg.LEmFEiK1rFypqTJ7-7TYJEUcbh5ga_aY" />
 
-        <button id="call-btn" class="btn-call" type="button" disabled>Iniciando...</button>
-        <button id="hangup-btn" class="btn-hangup" type="button">Colgar Llamada</button>
+  <label>Destino</label>
+  <input id="destination" placeholder="+56..." value="+56225652000" />
 
-        <div id="status-box" class="status">Cargando SDK de Webex...</div>
-    </div>
+  <button id="btnInit">Inicializar</button>
+  <button id="btnCall" disabled>Llamar</button>
 
-    <script>
-        // =========================================================
-        // CONFIGURACIÓN DE PARÁMETROS
-        // =========================================================
-        const JWE_TOKEN = 'eyJwMnMiOiI3dU5qNFZTS1Y2blN6WEdIT0NjLTRTeGRBUGhwS01naHlyZ01SWHNwRklUVHZjMUY2VVBqdkU1LXZ3V3J3ZFVOIiwicDJjIjo3ODg4LCJraWQiOiJrbXM6Ly9rbXMtdXMud2J4Mi5jb20va2V5cy80MDYxOTQ1NS1mYTQ0LTQzNGItYjhkNi04NjY2ODU3ODMzYWQiLCJjdHkiOiJKV1QiLCJlbmMiOiJBMTkyQ0JDLUhTMzg0IiwiYWxnIjoiUEJFUzItSFMzODQrQTE5MktXIn0.hf6jZA3mcJ0KrTQ73qPKvw_0MhxmdBiIPq4Nj3pms8rRO5CkIgm0w97KVB-64RLe_e3U9B8Ri_o.FJccCQQ9kjBNTbEQAZCGeA.8BXZbaZDmC7uJnl-GFR9E6Pgjx0Qk9LwyaznVfCUUk_guRGHgwUYe7giX4dlXcthOaYiX2ufs5Sp-q-I-OTqtytUFDJp1SaT9TcKzAfISdkblfNBch61sAM6v5EmhHzJ54bgMSMnevZmbDys6Uf1il21XBhJNWSVT1hZL2LQlcbZBmQiL5-psH9hrhbEpBOxJGgKT6ys3H0HWzQhaC8h3W81k9RW3WwAlYc6uNX46innoHrsTxLSuvPZ3cTBdUdxDn0tK5eCVgZwD9m-lrPODs8N8PJsaooh4nVJwl7tbyolj6V41qiOV58s0qFhWXybB58s2_YZ8RP5YUD43bNvbYZTiZgsSOTAdUp-NENZPOQb6bOP8R0eM7aOQCDau8um1JXaCIh43XyxfAgAmPx4jN3QuXosb2wv7Gdfqrw8vU-D4Oke9XIguydFtUZ9InWCN94Aj1Tx1A10EfeUGSVMb8CjdzCGEpiWQcQq5QM1ilR5W_PvMZNgF8uV6zabn_5LdRHrdL3ctnKFNRZ1QSDCpBMDZrlFxnp3vF_E1yivzlNVwiT_4s117VgAog0oE7fY4oupkEBCM1eDG_puDuk_h6YCzA-wOW1SHr9EsIqrIf3xUNPyb7xY1MDli8XKjXIimyPGse4jn2YkRSHeMcxSEolShZBZhX0NIvC6VBszWCXxSJx_dMmA72S5DvqfwqfvEcTdtLTbS6w8_eRsKWHSvCArjnaTKF6NaVM1_3PVpd4.2kV3ApvzkQUikGdP87_GhmPCAuBp1znt';
-        
-        // Número o extensión de destino
-        const NUMERO_DESTINO = '+56225652000'; 
+  <div id="status">Estado: esperando...</div>
 
-        let webexInstance = null;
-        let activeMeeting = null;
+  <script src="https://webex.github.io/webex-js-sdk/webex.min.js"></script>
+  <script>
+    let calling;
+    let micStream;
 
-        const statusBox = document.getElementById('status-box');
-        const callBtn = document.getElementById('call-btn');
-        const hangupBtn = document.getElementById('hangup-btn');
+    const status = (msg) => {
+      document.getElementById('status').textContent = msg;
+    };
 
-        // =========================================================
-        // PROCESO DE AUTENTICACIÓN Y VALIDACIÓN DEL TOKEN JWE
-        // =========================================================
-        window.addEventListener('load', async function() {
-            if (typeof window.Webex === 'undefined') {
-                mostrarEstado("Error: No se pudo descargar la librería de Cloudflare. Revisa si un Firewall local bloquea cdnjs.cloudflare.com", "error");
-                return;
-            }
+    document.getElementById('btnInit').addEventListener('click', async () => {
+      try {
+        const guestToken = document.getElementById('guestToken').value.trim();
+        const jweToken = document.getElementById('jweToken').value.trim();
 
-            try {
-                mostrarEstado("Enviando token JWE a la nube de Cisco Webex para su validación...");
-
-                // Inicializar Webex pasando el Token JWE
-                webexInstance = window.Webex.init({
-                    credentials: {
-                        supertoken: JWE_TOKEN
-                    }
-                });
-
-                // ESPERA LA RESPUESTA DE AUTENTICACIÓN DE CISCO
-                await webexInstance.once('ready');
-
-                mostrarEstado("Registrando dispositivo en los servidores WebRTC...");
-                await webexInstance.meetings.register();
-
-                // SI LLEGA A ESTE PUNTO: EL TOKEN ES 100% VÁLIDO Y ACTIVO
-                mostrarEstado("¡TOKEN JWE VÁLIDO Y AUTENTICADO! Listo para llamar a " + NUMERO_DESTINO, "success");
-                callBtn.innerText = "Llamar a Soporte";
-                callBtn.disabled = false;
-
-            } catch (error) {
-                console.error("Error devuelto por la API de Cisco:", error);
-                
-                // DETECCIÓN DE ERRORES DE TOKEN EXPIRADO / INVÁLIDO
-                let msg = error.message || JSON.stringify(error);
-                if (msg.includes("401") || msg.includes("Unauthorized") || msg.includes("invalid")) {
-                    mostrarEstado("<b>ERROR DE VALIDACIÓN (401 Unauthorized):</b><br>El token JWE es inválido o ya ha expirado. Debes firmar un nuevo token Guest en tu backend.", "error");
-                } else {
-                    mostrarEstado("<b>ERROR DE CONEXIÓN CON CISCO:</b><br>" + msg, "error");
-                }
-            }
-        });
-
-        // =========================================================
-        // EJECUCIÓN DE LA LLAMADA
-        // =========================================================
-        callBtn.addEventListener('click', async function() {
-            if (!webexInstance) return;
-
-            try {
-                mostrarEstado("Solicitando permisos de micrófono...");
-                callBtn.disabled = true;
-
-                const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-
-                mostrarEstado("Marcando a " + NUMERO_DESTINO + "...");
-                activeMeeting = await webexInstance.meetings.create(NUMERO_DESTINO);
-
-                activeMeeting.on('media:stream:change', (media) => {
-                    if (media.type === 'remoteAudio') {
-                        document.getElementById('remote-audio').srcObject = media.stream;
-                    }
-                });
-
-                activeMeeting.on('error', (err) => {
-                    console.error("Error durante la llamada:", err);
-                    restablecerInterfaz("Error en la llamada: " + (err.message || err));
-                });
-
-                await activeMeeting.join();
-                await activeMeeting.addMedia({
-                    mediaSettings: { sendAudio: true, receiveAudio: true },
-                    stream: mediaStream
-                });
-
-                callBtn.style.display = 'none';
-                hangupBtn.style.display = 'inline-block';
-                mostrarEstado("<b>Llamada en curso hacia:</b> " + NUMERO_DESTINO, "success");
-
-            } catch (err) {
-                console.error("Error al iniciar la llamada:", err);
-                mostrarEstado("Error al conectar la llamada: " + (err.message || err), "error");
-                callBtn.disabled = false;
-            }
-        });
-
-        // =========================================================
-        // COLGAR
-        // =========================================================
-        hangupBtn.addEventListener('click', async function() {
-            if (activeMeeting) {
-                try {
-                    await activeMeeting.leave();
-                } catch (e) {
-                    console.error("Error al colgar:", e);
-                }
-            }
-            restablecerInterfaz("Llamada finalizada.");
-        });
-
-        function mostrarEstado(mensaje, clase = '') {
-            statusBox.innerHTML = mensaje;
-            statusBox.className = 'status ' + clase;
+        if (!guestToken || !jweToken) {
+          status('Debes ingresar guest token y JWE token.');
+          return;
         }
 
-        function restablecerInterfaz(mensaje) {
-            mostrarEstado(mensaje);
-            callBtn.style.display = 'inline-block';
-            callBtn.disabled = false;
-            hangupBtn.style.display = 'none';
-            activeMeeting = null;
+        status('Inicializando SDK...');
+
+        calling = Webex.init({
+          guestToken,
+          calling: true
+        });
+
+        await calling.ready();
+
+        status('SDK listo. Pidiendo micrófono...');
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        calling.callingClient.init();
+
+        status('Inicializado. Puedes presionar "Llamar".');
+        document.getElementById('btnCall').disabled = false;
+      } catch (err) {
+        console.error(err);
+        status('Error inicializando:\n' + (err?.message || JSON.stringify(err)));
+      }
+    });
+
+    document.getElementById('btnCall').addEventListener('click', async () => {
+      try {
+        const destination = document.getElementById('destination').value.trim();
+        const jweToken = document.getElementById('jweToken').value.trim();
+
+        if (!calling) {
+          status('Primero inicializa el SDK.');
+          return;
         }
-    </script>
+
+        status('Preparando llamada...');
+
+        const lines = calling.callingClient.getLines();
+        const line = Object.values(lines)[0];
+
+        if (!line) {
+          status('No se encontró una línea disponible.');
+          return;
+        }
+
+        const call = line.makeCall({
+          destination,
+          jweToken
+        });
+
+        await call.dial(micStream);
+
+        status('Llamada iniciada.');
+      } catch (err) {
+        console.error(err);
+        status('Error en llamada:\n' + (err?.message || JSON.stringify(err)));
+      }
+    });
+  </script>
 </body>
 </html>
